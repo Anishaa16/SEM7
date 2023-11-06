@@ -1,0 +1,505 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "d4dbbc82",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "from sklearn.model_selection import train_test_split"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "411c44a6",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#import data\n",
+    "data = pd.read_csv(\"uber.csv\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "61a504d5",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Create a data copy\n",
+    "df = data.copy()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "f0bd8182",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df.info()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "74549b57",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df.shape\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "90db5296",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df.head()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "35b0551c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df.isnull()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "d6cbc458",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df.drop(columns=[\"Unnamed: 0\", \"key\"], inplace=True)\n",
+    "df.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "5ca91c9c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df.isnull().sum()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "eb19801f",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df['dropoff_latitude'].fillna(value=df['dropoff_latitude'].mean(),inplace = True)\n",
+    "df['dropoff_longitude'].fillna(value=df['dropoff_longitude'].median(),inplace = True)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "c08e6c57",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df.dtypes\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "5b307a48",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# From the above output, we see that the data type of 'pickup_datetime' is 'object\n",
+    "# But 'pickup_datetime'is a date time stamp variable, which is wrongly interpreted as 'object', so we will convert this variable data type to 'datetime'."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "2a584980",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df.pickup_datetime = pd.to_datetime(df.pickup_datetime)\n",
+    "df.dtypes"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "054426b9",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# we will extract time feature from the 'pickup_datetime' \n",
+    "# we will add a variable which measures the distance between pickup and drop"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "8d91879f",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df = df.assign(hour = df.pickup_datetime.dt.hour,\n",
+    "               day = df.pickup_datetime.dt.day,\n",
+    "               month = df.pickup_datetime.dt.month,\n",
+    "               year = df.pickup_datetime.dt.year,\n",
+    "               dayofweek = df.pickup_datetime.dt.dayofweek)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "56af1785",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "90f4e015",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df = df.drop([\"pickup_datetime\"], axis =1)\n",
+    "df"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "ff2f3ebe",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# function to calculate the travel distance from the longitudes and latitudes\n",
+    "from math import *\n",
+    "    \n",
+    "def distance_formula(longitude1, latitude1, longitude2, latitude2):\n",
+    "    travel_dist = []\n",
+    "    \n",
+    "    for pos in range (len(longitude1)):\n",
+    "        lon1, lan1, lon2, lan2 = map(radians, [longitude1[pos], latitude1[pos], longitude2[pos], latitude2[pos]])\n",
+    "        dist_lon = lon2 - lon1\n",
+    "        dist_lan = lan2 - lan1\n",
+    "        \n",
+    "        a = sin(dist_lan/2)**2 + cos(lan1) * cos(lan2) * sin(dist_lon/2)**2\n",
+    "        \n",
+    "        #radius of earth = 6371\n",
+    "        c = 2 * asin(sqrt(a)) * 6371 \n",
+    "        travel_dist.append(c)\n",
+    "            \n",
+    "    return  travel_dist"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "042202a2",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df['dist_travel_km'] = distance_formula(df.pickup_longitude.to_numpy(), df.pickup_latitude.to_numpy(), df.dropoff_longitude.to_numpy(), df.dropoff_latitude.to_numpy())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "8472f434",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df.plot(kind = \"box\",subplots = True,layout = (6,2),figsize=(15,20)) #Boxplot to check the outliers\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "5c35a137",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#Using the InterQuartile Range to fill the values\n",
+    "def remove_outlier(df1 , col):\n",
+    "    Q1 = df1[col].quantile(0.25)\n",
+    "    Q3 = df1[col].quantile(0.75)\n",
+    "    IQR = Q3 - Q1\n",
+    "    lower_whisker = Q1-1.5*IQR\n",
+    "    upper_whisker = Q3+1.5*IQR\n",
+    "    df[col] = np.clip(df1[col] , lower_whisker , upper_whisker)\n",
+    "    return df1\n",
+    "\n",
+    "def treat_outliers_all(df1 , col_list):\n",
+    "    for c in col_list:\n",
+    "        df1 = remove_outlier(df , c)\n",
+    "    return df1"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "d23811aa",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df = treat_outliers_all(df , df.iloc[: , 0::])\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "b24a3b66",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#Boxplot shows that dataset is free from outliers\n",
+    "df.plot(kind = \"box\",subplots = True,layout = (7,2),figsize=(15,20)) \n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "e243a797",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#Function to find the correlation\n",
+    "corr = df.corr() \n",
+    "corr"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "0a8c7c8c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "fig,axis = plt.subplots(figsize = (10,6))\n",
+    "sns.heatmap(df.corr(),annot = True) #Correlation Heatmap (Light values means highly correlated)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "8189c2ea",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Dividing the dataset into feature and target values \n",
+    "df_x = df[['pickup_longitude','pickup_latitude','dropoff_longitude','dropoff_latitude','passenger_count','hour','day','month','year','dayofweek','dist_travel_km']]\n",
+    "df_y = df['fare_amount']"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "e4f8d016",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Dividing the dataset into training and testing dataset\n",
+    "x_train, x_test, y_train, y_test = train_test_split(df_x, df_y, test_size=0.2, random_state=1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "c4da575c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "55ec5c2a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.linear_model import LinearRegression\n",
+    "\n",
+    "# initialize the linear regression model\n",
+    "reg = LinearRegression()\n",
+    "\n",
+    "# Train the model with our training data\n",
+    "reg.fit(x_train, y_train)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "6e6161bb",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "y_pred_lin = reg.predict(x_test)\n",
+    "print(y_pred_lin)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "a5e4c424",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.ensemble import RandomForestRegressor\n",
+    "\n",
+    "#Here n_estimators means number of trees you want to build before making the prediction\n",
+    "rf = RandomForestRegressor(n_estimators=100)\n",
+    "rf.fit(x_train,y_train)\n",
+    "y_pred_rf = rf.predict(x_test)\n",
+    "print(y_pred_rf)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "c0227bf3",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "y_pred_rf = rf.predict(x_test)\n",
+    "print(y_pred_rf)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "db980137",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "cols = ['Model', 'RMSE', 'R-Squared']\n",
+    "\n",
+    "# create a empty dataframe of the colums\n",
+    "# columns: specifies the columns to be selected\n",
+    "result_tabulation = pd.DataFrame(columns = cols)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "09118c1c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn import metrics \n",
+    "from sklearn.metrics import r2_score \n",
+    "\n",
+    "reg_RMSE = np.sqrt(metrics.mean_squared_error(y_test, y_pred_lin))\n",
+    "reg_squared = r2_score(y_test, y_pred_lin)\n",
+    "\n",
+    "full_metrics = pd.Series({'Model': \"Linear Regression\", 'RMSE' : reg_RMSE, 'R-Squared' : reg_squared})\n",
+    "\n",
+    "# append our result table using append()\n",
+    "# ignore_index=True: does not use the index labels\n",
+    "# python can only append a Series if ignore_index=True or if the Series has a name\n",
+    "result_tabulation = result_tabulation.append(full_metrics, ignore_index = True)\n",
+    "\n",
+    "# print the result table\n",
+    "result_tabulation"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "ec352b12",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "rf_RMSE = np.sqrt(metrics.mean_squared_error(y_test, y_pred_rf))\n",
+    "rf_squared = r2_score(y_test, y_pred_rf)\n",
+    "\n",
+    "\n",
+    "full_metrics = pd.Series({'Model': \"Random Forest \", 'RMSE':rf_RMSE, 'R-Squared': rf_squared})\n",
+    "# append our result table using append()\n",
+    "# ignore_index=True: does not use the index labels\n",
+    "# python can only append a Series if ignore_index=True or if the Series has a name\n",
+    "result_tabulation = result_tabulation.append(full_metrics, ignore_index = True)\n",
+    "\n",
+    "# print the result table\n",
+    "result_tabulation"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "5d41fdbb",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "ccccb0ed",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "e1cf268c",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "2a17f33b",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.10.9"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
